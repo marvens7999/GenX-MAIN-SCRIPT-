@@ -34,7 +34,18 @@ local GENX_ICON_ID = "rbxassetid://128873747424209" -- << replace with your uplo
 
 -- Paste the link you load GenX from, e.g. "https://raw.githubusercontent.com/you/repo/main/GenX.lua"
 -- Needed for Settings > Auto execute (it re-launches GenX from this link when you join a saved game).
-local GENX_LOADER_URL = ""
+local GENX_LOADER_URL = "https://raw.githubusercontent.com/marvens7999/GenX-MAIN-SCRIPT-/refs/heads/main/Script"
+
+-- Optional tab icons. Paste an image id ("rbxassetid://123") for any tab.
+-- Use white glyphs on a transparent background (PNG, 128x128) so they take the accent color.
+-- Leave "" to keep the built-in character icon for that tab.
+local TAB_ICON_IDS = {
+    Home = "",
+    Visuals = "",
+    Combat = "",
+    Movement = "",
+    Settings = "",
+}
 
 local CONFIG = {
     Name = "GenX",
@@ -1064,11 +1075,13 @@ local function refreshTab(item, animate)
     if animate then
         tween(item.button, 0.2, {BackgroundColor3 = bg, BackgroundTransparency = bgT})
         tween(item.icon, 0.2, {TextColor3 = iconColor})
+        if item.paint then item.paint(iconColor, true) end
         tween(item.title, 0.2, {TextColor3 = titleColor})
     else
         item.button.BackgroundColor3 = bg
         item.button.BackgroundTransparency = bgT
         item.icon.TextColor3 = iconColor
+        if item.paint then item.paint(iconColor, false) end
         item.title.TextColor3 = titleColor
     end
 end
@@ -1106,6 +1119,7 @@ local function layoutTabs()
             item.title.Size = UDim2.new(1, 0, 0, 14)
             item.title.TextSize = 10
             item.title.TextXAlignment = Enum.TextXAlignment.Center
+            if item.visual then item.visual.Position = UDim2.new(0.5, 0, 0, 15) end
         else
             item.button.Position = UDim2.fromOffset(0, (i - 1) * (Layout.tabH + 4))
             item.button.Size = UDim2.new(1, 0, 0, Layout.tabH)
@@ -1116,6 +1130,7 @@ local function layoutTabs()
             item.title.Size = UDim2.new(1, -50, 1, 0)
             item.title.TextSize = 13
             item.title.TextXAlignment = Enum.TextXAlignment.Left
+            if item.visual then item.visual.Position = UDim2.new(0, 23, 0.5, 0) end
         end
     end
 end
@@ -1130,6 +1145,84 @@ local function selectTab(name, instant)
     positionIndicator(not instant)
     showPage(name, instant)
     if refreshMovement then refreshMovement() end
+end
+
+-- Built-in vector icons (22x22), drawn from frames so they recolor with the theme
+local FULL = UDim.new(0.5, 0)
+local function buildGlyph(name, parent)
+    local g = create("Frame", {
+        Name = "Glyph",
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Size = UDim2.fromOffset(22, 22),
+    }, parent)
+    local parts = {}
+
+    local function box(x, y, w, h, rot, radius)
+        local f = create("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromOffset(x, y),
+            Size = UDim2.fromOffset(w, h),
+            Rotation = rot or 0,
+            BorderSizePixel = 0,
+            BackgroundColor3 = C.Muted,
+        }, g)
+        if radius then create("UICorner", {CornerRadius = radius}, f) end
+        parts[#parts + 1] = {f, "BackgroundColor3"}
+    end
+
+    local function ring(x, y, w, h, thick, radius)
+        local f = create("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromOffset(x, y),
+            Size = UDim2.fromOffset(w, h),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+        }, g)
+        create("UICorner", {CornerRadius = radius}, f)
+        local st = create("UIStroke", {Thickness = thick, Color = C.Muted}, f)
+        parts[#parts + 1] = {st, "Color"}
+    end
+
+    if name == "Home" then
+        box(7, 7.5, 11, 2.2, -35, UDim.new(0, 1))      -- roof left
+        box(15, 7.5, 11, 2.2, 35, UDim.new(0, 1))      -- roof right
+        ring(11, 14.5, 11, 8, 2, UDim.new(0, 2))       -- walls
+        box(11, 16.5, 3, 5, 0, UDim.new(0, 1))         -- door
+    elseif name == "Visuals" then
+        ring(11, 11, 20, 11, 2, FULL)                  -- eye
+        box(11, 11, 6, 6, 0, FULL)                     -- pupil
+    elseif name == "Combat" then
+        ring(11, 11, 13, 13, 2, FULL)                  -- crosshair ring
+        box(11, 11, 3, 3, 0, FULL)                     -- center dot
+        box(11, 2.5, 2, 5, 0)                          -- ticks
+        box(11, 19.5, 2, 5, 0)
+        box(2.5, 11, 5, 2, 0)
+        box(19.5, 11, 5, 2, 0)
+    elseif name == "Movement" then
+        box(11.5, 10.5, 18, 2.4, -45, UDim.new(0, 1))  -- arrow shaft
+        box(13.5, 5.5, 9, 2.4, 0, UDim.new(0, 1))      -- arrow head
+        box(17, 10, 2.4, 9, 0, UDim.new(0, 1))
+    elseif name == "Settings" then
+        ring(11, 11, 11, 11, 2.5, FULL)                -- gear body
+        for k = 0, 7 do
+            local a = math.rad(k * 45)
+            box(11 + 8.6 * math.cos(a), 11 + 8.6 * math.sin(a), 3.4, 3.4, k * 45, UDim.new(0, 1))
+        end
+    else
+        box(11, 11, 8, 8, 0, FULL)
+    end
+
+    local function paint(color, animate)
+        for _, p in ipairs(parts) do
+            if animate then
+                tween(p[1], 0.2, {[p[2]] = color})
+            else
+                p[1][p[2]] = color
+            end
+        end
+    end
+    return g, paint
 end
 
 for index, def in ipairs(TAB_DEFS) do
@@ -1153,11 +1246,53 @@ for index, def in ipairs(TAB_DEFS) do
         name = def.name, index = index, button = btn,
         icon = icon, title = title, selected = false,
     }
+
+    -- Icon: an uploaded image if TAB_ICON_IDS has one, otherwise a built-in
+    -- vector glyph drawn from UI shapes. Both take the accent color, so they
+    -- match every theme.
+    local iconId = TAB_ICON_IDS[def.name]
+    if type(iconId) == "string" and iconId ~= "" then
+        local img = create("ImageLabel", {
+            Name = "TabImage",
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Size = UDim2.fromOffset(22, 22),
+            Image = iconId,
+            ImageColor3 = C.Muted,
+            ScaleType = Enum.ScaleType.Fit,
+        }, btn)
+        item.visual = img
+        item.paint = function(color, animate)
+            if animate then tween(img, 0.2, {ImageColor3 = color}) else img.ImageColor3 = color end
+        end
+        icon.TextTransparency = 1
+        task.spawn(function()
+            local deadline = os.clock() + 8
+            while not Dead and os.clock() < deadline and not img.IsLoaded do task.wait(0.25) end
+            if not Dead and not img.IsLoaded then
+                img.Visible = false
+                icon.TextTransparency = 0
+            end
+        end)
+    else
+        local glyph, paint = buildGlyph(def.name, btn)
+        item.visual = glyph
+        item.paint = paint
+        icon.TextTransparency = 1
+    end
     TabItems[index] = item
     TabByName[def.name] = item
 
     bind(btn, "BackgroundColor3", function(a) return (tabGoals(item)) end)
     bind(icon, "TextColor3", function(a) local _, _, c = tabGoals(item) return c end)
+    if item.visual then
+        -- re-tint on theme change (the fn paints as a side effect)
+        bind(item.visual, "Name", function(a)
+            local _, _, c = tabGoals(item)
+            item.paint(c, false)
+            return item.visual.Name
+        end)
+    end
 
     track(btn.MouseButton1Down:Connect(function()
         if not item.selected then
